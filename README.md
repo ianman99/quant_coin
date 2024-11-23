@@ -1,1 +1,1 @@
-# quant_coin from ianman99
+# quant_coin
