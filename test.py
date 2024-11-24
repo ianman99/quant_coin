@@ -73,4 +73,3 @@ schedule.every().minute.at(":01").do(main)
 
 while True:
     schedule.run_pending()
-    time.sleep(1)
