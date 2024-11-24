@@ -11,6 +11,15 @@ import requests
 import pytz
 import numpy as np
 import schedule
+import pymysql
+
+# DB connection
+sql_connection = pymysql.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database=os.getenv('DB_NAME')
+    )
 
 # Login
 upbit = pyupbit.Upbit(os.getenv("UPBIT_ACCESS_KEY"), os.getenv("UPBIT_SECRET_KEY"))
@@ -22,6 +31,23 @@ def execute_buy():
         if buykrw > 5000:
             result = upbit.buy_market_order("KRW-BTC", buykrw)
             print("Buy order successful:", result)
+            # send to mysql
+            result['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  
+            result['order_type'] = 'buy'  
+            with sql_connection.cursor() as cursor:
+                sql = """
+                INSERT INTO record (timestamp, order_type, uuid, side, ord_type, state, market, created_at, volume, 
+                                             remaining_volume, reserved_fee, remaining_fee, paid_fee, locked, 
+                                             executed_volume, trades_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(sql, (
+                    result['timestamp'], result['order_type'], result['uuid'], result['side'], result['ord_type'], 
+                    result['state'], result['market'], result['created_at'], result['volume'], 
+                    result['remaining_volume'], result['reserved_fee'], result['remaining_fee'], 
+                    result['paid_fee'], result['locked'], result['executed_volume'], result['trades_count']
+                ))
+                sql_connection.commit()
     except Exception as e:
         print(f"Failed to execute buy order: {e}")
 
@@ -33,6 +59,23 @@ def execute_sell():
         if btc_current_price*sellbtc > 5000:
             result = upbit.sell_market_order("KRW-BTC", sellbtc)
             print("Sell order successful:", result)
+            # send to mysql
+            result['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')  
+            result['order_type'] = 'sell'  
+            with sql_connection.cursor() as cursor:
+                sql = """
+                INSERT INTO record (timestamp, order_type, uuid, side, ord_type, state, market, created_at, volume, 
+                                             remaining_volume, reserved_fee, remaining_fee, paid_fee, locked, 
+                                             executed_volume, trades_count)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                cursor.execute(sql, (
+                    result['timestamp'], result['order_type'], result['uuid'], result['side'], result['ord_type'], 
+                    result['state'], result['market'], result['created_at'], result['volume'], 
+                    result['remaining_volume'], result['reserved_fee'], result['remaining_fee'], 
+                    result['paid_fee'], result['locked'], result['executed_volume'], result['trades_count']
+                ))
+                sql_connection.commit()
     except Exception as e:
         print(f"Failed to execute sell order: {e}")
 
@@ -55,13 +98,14 @@ def main():
     std_ln_volume = df_volume["ln_volume"].std()
 
     # 95% confidence interval
-    confidence_interval_upper = mean_ln_volume + 1.96 * std_ln_volume
+    confidence_interval_upper = mean_ln_volume + (1.96 * std_ln_volume)
+    confidence_interval_lower = mean_ln_volume - (1.96 * std_ln_volume)
 
     # trading logic
     if latest_ln_volume >= confidence_interval_upper:
         execute_sell()
             
-    elif mean_ln_volume < latest_ln_volume < confidence_interval_upper:
+    elif confidence_interval_lower < latest_ln_volume < confidence_interval_upper:
         print("hold")
 
     else:
