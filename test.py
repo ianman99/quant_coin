@@ -36,17 +36,19 @@ def execute_buy():
             result['order_type'] = 'buy'  
             with sql_connection.cursor() as cursor:
                 sql = """
-                INSERT INTO record (timestamp, order_type, uuid, side, ord_type, state, market, created_at, volume, 
-                                             remaining_volume, reserved_fee, remaining_fee, paid_fee, locked, 
-                                             executed_volume, trades_count)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO record (
+                        timestamp, order_type, uuid, side, ord_type, price, state, market, created_at, 
+                        reserved_fee, remaining_fee, paid_fee, locked, executed_volume, trades_count
+                    ) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
                 cursor.execute(sql, (
-                    result['timestamp'], result['order_type'], result['uuid'], result['side'], result['ord_type'], 
-                    result['state'], result['market'], result['created_at'], result['volume'], 
-                    result['remaining_volume'], result['reserved_fee'], result['remaining_fee'], 
-                    result['paid_fee'], result['locked'], result['executed_volume'], result['trades_count']
+                    result['timestamp'], result('order_type'), result['uuid'], result['side'], result['ord_type'], 
+                    result['price'], result['state'], result['market'], result['created_at'], result['reserved_fee'], 
+                    result['remaining_fee'], result['paid_fee'], result['locked'], result['executed_volume'], 
+                    result['trades_count']
                 ))
+
                 sql_connection.commit()
     except Exception as e:
         print(f"Failed to execute buy order: {e}")
